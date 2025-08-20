@@ -1,13 +1,15 @@
 package com.skooldio.android.fundamentals.workshop.pomodoro
 
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.skooldio.android.fundamentals.workshop.pomodoro.config.PomodoroConfig
+import com.skooldio.android.fundamentals.workshop.pomodoro.data.LocalStorage
+import com.skooldio.android.fundamentals.workshop.pomodoro.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     // Requester for permission requesting
@@ -15,6 +17,10 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) {
         // Do nothing
+    }
+
+    private val binding: ActivityMainBinding by lazy {
+        ActivityMainBinding.inflate(layoutInflater)
     }
 
     companion object {
@@ -31,13 +37,102 @@ class MainActivity : AppCompatActivity() {
         private const val LONG_BREAK_DURATION_MAX = PomodoroConfig.LONG_BREAK_DURATION_MAX
     }
 
+    private var workDuration: Int = WORK_DURATION_DEFAULT
+    private var shortBreakDuration: Int = SHORT_BREAK_DURATION_DEFAULT
+    private var longBreakDuration: Int = LONG_BREAK_DURATION_DEFAULT
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(binding.root)
 
         // Additional code to support new permission in Android 13
         // Leave this code on the last line of the method
         requestPostNotificationPermission()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        restorePomodoroConfigValue()
+        updateWorkDuration()
+        updateShortBreakDuration()
+        updateLongBreakDuration()
+
+        // WET code alert
+        binding.buttonAddWorkDuration.setOnClickListener {
+            workDuration += 5
+            workDuration = workDuration.coerceIn(WORK_DURATION_MIN, WORK_DURATION_MAX)
+            updateWorkDuration()
+        }
+        binding.buttonReduceWorkDuration.setOnClickListener {
+            workDuration -= 5
+            workDuration = workDuration.coerceIn(WORK_DURATION_MIN, WORK_DURATION_MAX)
+            updateWorkDuration()
+        }
+        binding.buttonAddShortBreakDuration.setOnClickListener {
+            shortBreakDuration += 5
+            shortBreakDuration = shortBreakDuration.coerceIn(SHORT_BREAK_DURATION_MIN, SHORT_BREAK_DURATION_MAX)
+            updateShortBreakDuration()
+        }
+        binding.buttonReduceShortBreakDuration.setOnClickListener {
+            shortBreakDuration -= 5
+            shortBreakDuration = shortBreakDuration.coerceIn(SHORT_BREAK_DURATION_MIN, SHORT_BREAK_DURATION_MAX)
+            updateShortBreakDuration()
+        }
+        binding.buttonAddLongBreakDuration.setOnClickListener {
+            longBreakDuration += 5
+            longBreakDuration = longBreakDuration.coerceIn(LONG_BREAK_DURATION_MIN, LONG_BREAK_DURATION_MAX)
+            updateLongBreakDuration()
+        }
+        binding.buttonReduceLongBreakDuration.setOnClickListener {
+            longBreakDuration -= 5
+            longBreakDuration = longBreakDuration.coerceIn(LONG_BREAK_DURATION_MIN, LONG_BREAK_DURATION_MAX)
+            updateLongBreakDuration()
+        }
+
+        binding.buttonReady.setOnClickListener {
+            val config = Config(workDuration, shortBreakDuration, longBreakDuration)
+            val intent = TimerActivity.newIntent(this, config)
+            startActivity(intent)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        savePomodoroConfigValue()
+    }
+
+    fun updateWorkDuration() {
+        binding.textViewWorkDuration.text = getString(R.string.duration_value,
+            workDuration)
+    }
+    fun updateShortBreakDuration() {
+        binding.textViewShortDuration.text = getString(R.string.duration_value,
+            shortBreakDuration)
+    }
+
+    fun updateLongBreakDuration() {
+        binding.textViewLongDuration.text = getString(R.string.duration_value,
+            longBreakDuration)
+    }
+
+    private fun savePomodoroConfigValue() {
+        LocalStorage.saveConfig(
+            context = this,
+            workDuration = workDuration,
+            shortBreakDuration = shortBreakDuration,
+            longBreakDuration = longBreakDuration
+        )
+    }
+
+    private fun restorePomodoroConfigValue() {
+        val (
+            workDuration,
+            shortBreakDuration,
+            longBreakDuration
+        ) = LocalStorage.getConfig(this)
+        this.workDuration = workDuration
+        this.shortBreakDuration = shortBreakDuration
+        this.longBreakDuration = longBreakDuration
     }
 
     // Check and request post notification permission for Android 13 or higher
